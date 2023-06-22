@@ -1,11 +1,76 @@
 import json
 import os
 import dill
+import torch
+import random 
 
-def create_key_mapping(original_dict):
+def multi_list_shuffle(num_indices, lists_to_shuffle):
+    shuffled_indices = random.shuffle(list(range(num_indices)))
+    shuffled_lists = []
+    for list_to_shuffle in lists_to_shuffle:
+        shuffled_lists.append([list_to_shuffle[i] for i in shuffled_indices])
+    return shuffled_lists
+
+def simulsort(a, b):
+    return (list(c) for c in zip(*sorted(zip(a, b))))
+
+def two_list_shuffle(a, b):
+    c = list(zip(a, b))
+
+    random.shuffle(c)
+
+    a, b = zip(*c)
+    
+    return a, b
+
+def read_config(file_path):
+    return load_json(file_path)
+
+def window_completion_check(path):
+    completed_windows = []
+    for file in os.listdir(path):
+        completed_windows.append(file[:8])
+    return completed_windows
+
+def execute_mapping(iterable_, mapping, edge_type="community"):
+    if edge_type == "article":
+        return (0, mapping[iterable_[1]])
+    return [(mapping[ele1],mapping[ele2]) for (ele1, ele2) in iterable_]
+
+def is_iterable(obj):
+    if isinstance(obj, str):
+        return False
+    try:
+        iter(obj)
+        return True
+    except TypeError:
+        return False
+
+def create_mapping(iterable_, existing_mapping=None, edge_type="community", offset=0):
+    if existing_mapping == None:
+        dict_mapping = {}
+        for i, key in enumerate(iterable_):
+            if edge_type=="article" and i == 0:
+                continue
+            dict_mapping[key] = 0 + offset
+        return dict_mapping
+    else:
+        for i, key in enumerate(iterable_):
+            if edge_type=="article" and i == 0:
+                continue
+            if not is_iterable(key):
+                if key not in existing_mapping:
+                    existing_mapping[key] = len(existing_mapping) + offset
+                break
+            for subkey in key:
+                if subkey not in existing_mapping:
+                    existing_mapping[subkey] = len(existing_mapping) + offset
+        return existing_mapping
+
+def create_key_mapping(original_dict, offset=0):
     dict_mapping = {}
     for i, key in enumerate(original_dict.keys()):
-        dict_mapping[key] = i
+        dict_mapping[key] = i + offset
     return dict_mapping
 
 def reverse_one_layer_dict(original_dict):
@@ -101,3 +166,24 @@ def set_news_urls():
     source_names = news_prefix_urls_rev
     global news_prefix_urls
     news_prefix_urls = {v: k for k, v in news_prefix_urls_rev.items()}
+    
+def merge_tensor_dicts(index_dict, content_dict, offset=0):
+    # Get the number of rows in the final tensor
+    num_rows = len(index_dict)
+
+    # Get the number of columns based on the size of the first tensor in the content dictionary
+    tensor_example = next(iter(content_dict.values()))
+
+    if isinstance(tensor_example, dict):
+        num_cols = len(tensor_example['embedding'])
+    else:
+        num_cols = tensor_example.shape[0]
+
+    # Initialize the merged tensor with zeros
+    merged_tensor = torch.zeros((num_rows, num_cols))
+    # Populate the merged tensor with values from the content dictionary using the index dictionary
+    for key, index in index_dict.items():
+        tensor = content_dict[key] if not isinstance(content_dict[key], dict) else torch.tensor(content_dict[key]['embedding'])
+        merged_tensor[index-offset] = tensor
+
+    return merged_tensor

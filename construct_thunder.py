@@ -13,8 +13,8 @@ pb_device = "cuda:1"
 pc_device = "cuda:3"
 lf_device = "cuda:6"
 
-def build_community_embeddings_for_window(window_name, window, window_images):
-    comm_embeddings_path = "/home/ataylor2/processing_covid_tweets/Thunder/community_embeddings"
+def build_community_embeddings_for_window(window_name, window, window_images, comm_embeddings_path):
+    
    
     aggregated_content_for_communities = {}
     aggregated_ids_for_communities = {}
@@ -43,9 +43,9 @@ def build_community_embeddings_for_window(window_name, window, window_images):
     # lf_initialization = generate_community_embeddings.initialize_longformer(lf_device)
     
     embeddings_types = {
-        "primera_bert": {},
-        "primera_clip": {},
-        "longformer": {}
+        #"primera_bert": {},
+        "primera_clip": {}
+        #"longformer": {}
     }
     for community in tqdm(aggregated_content_for_communities):
         if community == "":
@@ -91,7 +91,10 @@ def main():
     images_path = "/home/alvynw/articlesFinal/IMG"
     data_window_path = "/home/ataylor2/processing_covid_tweets/Thunder/metadata/data_windows.json"
     data_window_images_path = "/home/ataylor2/processing_covid_tweets/Thunder/metadata/data_windows_images.json"
-
+    comm_embeddings_path = "/home/ataylor2/processing_covid_tweets/Thunder/community_embeddings"
+    
+    completed_windows = utils.window_completion_check(comm_embeddings_path)
+    
     article_files = retrieve_article_files(articles_path)
     if not os.path.exists(data_window_path):
         data_windows = utils.filter_article_files(article_files)
@@ -105,7 +108,10 @@ def main():
         data_windows_images = utils.load_json(data_window_images_path)
     
     for window in data_windows:
-        build_community_embeddings_for_window(window, data_windows[window], data_windows_images[window])
+        if window in completed_windows:
+            continue
+        
+        build_community_embeddings_for_window(window, data_windows[window], data_windows_images[window], comm_embeddings_path)
         
     print("finished")
 

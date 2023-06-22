@@ -56,7 +56,7 @@ def sample_and_construct_tweets(window_name, window, output_dir, num_sampled_twe
             article_newssource_edge_instances[tweet_id] = inst_written_by
             tweet_ids_per_instance[tweet_id] = tweet_ids
     
-    randomly_sampled_tweets = random.sample(user_user_edge_instances.keys(), num_sampled_tweets)
+    randomly_sampled_tweets = user_user_edge_instances.keys() #random.sample(user_user_edge_instances.keys(), num_sampled_tweets)
     # reply handling
     reply_mapping = {}
     for tweet_id in randomly_sampled_tweets:
@@ -108,7 +108,7 @@ def main():
     
     tweet_tree_path = "/home/ataylor2/processing_covid_tweets/info_pathways_full_STRUCTURE"
     data_window_path = "/home/ataylor2/processing_covid_tweets/Thunder/metadata/data_windows_trees.json"
-    tweet_tree_output_path = "/home/ataylor2/processing_covid_tweets/Thunder/sampled_tweet_trees"
+    tweet_tree_output_path = "/home/ataylor2/processing_covid_tweets/Thunder/full_tweet_trees"
     
     num_sampled_tweets = 8000
     

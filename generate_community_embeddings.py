@@ -192,8 +192,12 @@ def get_primera_clip_embedding(TOKENIZER, MODEL, DOCSEP_TOKEN_ID, clip_model, pr
                 for image_name in os.listdir(image_dir):
                     if not 'jpeg' in image_name:
                         continue
-                    image = preprocess(Image.open(os.path.join(image_dir, image_name))).unsqueeze(0).to(device)
-                    image_features = clip_model.encode_image(image)
+                    try:
+                        image = preprocess(Image.open(os.path.join(image_dir, image_name))).unsqueeze(0).to(device)
+                        image_features = clip_model.encode_image(image)
+                    except OSError:
+                        print(f"Error loading image: {image_path}")
+                        continue
                     if image_embedding == None:
                         image_embedding = image_features
                     else:
@@ -208,8 +212,12 @@ def get_primera_clip_embedding(TOKENIZER, MODEL, DOCSEP_TOKEN_ID, clip_model, pr
                 for image_name in os.listdir(image_dir):
                     if not 'jpeg' in image_name:
                         continue
-                    image = preprocess(Image.open(os.path.join(image_dir, image_name))).unsqueeze(0).to(device)
-                    image_features = clip_model.encode_image(image)
+                    try:
+                        image = preprocess(Image.open(os.path.join(image_dir, image_name))).unsqueeze(0).to(device)
+                        image_features = clip_model.encode_image(image)
+                    except OSError:
+                        print(f"Error loading image: {os.path.join(image_dir, image_name)}")
+                        continue
                     if image_embedding == None:
                         image_embedding = image_features
                     else:
@@ -222,7 +230,10 @@ def get_primera_clip_embedding(TOKENIZER, MODEL, DOCSEP_TOKEN_ID, clip_model, pr
 
 def get_clip_embedding(clip_model, preprocess, device, content, image_dir):
     content = preprocess_clip_document(content)
+    
     text = clip.tokenize([content[:60]]).to(device)
+  
+        
     with torch.no_grad():
         text_embedding = clip_model.encode_text(text)
 

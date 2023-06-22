@@ -153,11 +153,11 @@ class Classifier(torch.nn.Module):
         return (edge_feat_comm1 * edge_feat_comm2).sum(dim=-1)
 
 class Model(torch.nn.Module):
-    def __init__(self, hidden_channels, out_channels, modelname, num_comm_nodes, num_article_nodes, metadata):
+    def __init__(self, hidden_channels, out_channels, modelname, num_comm_nodes, num_article_nodes, metadata, embedding_dim):
         super().__init__()
         # Since the dataset does not come with rich features, we also learn two
         # embedding matrices for users and movies:
-        self.comm_lin = torch.nn.Linear(768, hidden_channels)
+        self.comm_lin = torch.nn.Linear(embedding_dim, hidden_channels)
         self.comm_emb = torch.nn.Embedding(num_comm_nodes, hidden_channels)
         self.article_emb = torch.nn.Embedding(num_article_nodes, hidden_channels)
         # Instantiate homogeneous GNN:
@@ -182,7 +182,7 @@ class Model(torch.nn.Module):
         # data["community"].x = data["community"].x.to(device)
         # data["community"].node_id = data["community"].node_id.to(device)
         # data["article"].node_id = data["article"].node_id.to(device)
-        
+        # print("data[article].node_id", data["article"].node_id)
         x_dict = {
           "community": self.comm_lin(data["community"].x) + self.comm_emb(data["community"].node_id),
           "article": self.article_emb(data["article"].node_id),
@@ -195,6 +195,7 @@ class Model(torch.nn.Module):
         
         # `x_dict` holds feature matrices of all node types
         # `edge_index_dict` holds all edge indices of all edge types
+        
         if not self.edge_attrs:
             x_dict = self.gnn(x_dict, edge_index_dict)#data.edge_index_dict)
         else:

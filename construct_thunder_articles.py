@@ -35,9 +35,11 @@ def build_article_embeddings_for_window(window_name, window, window_images, wind
                         image_dir = window_images[article_data['id']]
                     else:
                         image_dir = None
-                    article_embeddings[window_article_mapping[article_data["source_url"]]] = \
-                        generate_community_embeddings.get_clip_embedding(*clip_initialization, clip_device, article_data['content'], image_dir)
-                
+                    try:
+                        article_embeddings[window_article_mapping[article_data["source_url"]]] = \
+                            generate_community_embeddings.get_clip_embedding(*clip_initialization, clip_device, article_data['content'], image_dir)
+                    except RuntimeError:
+                        pass
                 
     return article_embeddings
 
