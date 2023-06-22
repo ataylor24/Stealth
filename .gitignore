@@ -5,3 +5,6 @@ community_assignments
 Information_Pathways
 metadata
 sampled_tweet_trees
+scratch*
+*deprecated*
+__pycache__*
