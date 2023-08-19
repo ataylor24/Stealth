@@ -1,0 +1,1 @@
+python ../train.py ../ablation_configs/int_prim_bert_config_comm.json

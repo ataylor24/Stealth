@@ -1,0 +1,1 @@
+python ../train.py ../ablation_configs/eng_prim_clip_config_comm.json

@@ -179,6 +179,7 @@ def get_primera_clip_embedding(TOKENIZER, MODEL, DOCSEP_TOKEN_ID, clip_model, pr
     generated_str = TOKENIZER.batch_decode(
         generated_ids.tolist(), skip_special_tokens=True
     )[0]
+    
     text = clip.tokenize([generated_str]).to(device)
     with torch.no_grad():
         text_embedding = clip_model.encode_text(text)
@@ -224,6 +225,28 @@ def get_primera_clip_embedding(TOKENIZER, MODEL, DOCSEP_TOKEN_ID, clip_model, pr
                         image_embedding = image_embedding + image_features
     
     clip_embedding = text_embedding + image_embedding if image_embedding != None else torch.zeros(text_embedding.size())
+    
+    output = {'summary_text': generated_str, 'embedding': clip_embedding.squeeze(0).tolist()}
+    return output
+
+def get_primera_clip_imageless_embedding(TOKENIZER, MODEL, DOCSEP_TOKEN_ID, clip_model, preprocess, device, content, image_dirs):
+    cnt_ids = process_primera_document(TOKENIZER, list(content))
+    attention_mask = torch.ones(cnt_ids.shape, dtype=torch.long)  # no MaskedLM
+    global_attention_mask = torch.zeros_like(cnt_ids).to(cnt_ids.device)
+    # put global attention on <s> token
+    global_attention_mask[:, 0] = 1
+    global_attention_mask[cnt_ids == DOCSEP_TOKEN_ID] = 1
+    generated_ids = MODEL.generate(input_ids=cnt_ids, attention_mask=attention_mask,
+                                   global_attention_mask=global_attention_mask, max_length=60)
+    generated_str = TOKENIZER.batch_decode(
+        generated_ids.tolist(), skip_special_tokens=True
+    )[0]
+    
+    text = clip.tokenize([generated_str]).to(device)
+    with torch.no_grad():
+        text_embedding = clip_model.encode_text(text)
+
+    clip_embedding = text_embedding
     
     output = {'summary_text': generated_str, 'embedding': clip_embedding.squeeze(0).tolist()}
     return output

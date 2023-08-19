@@ -66,7 +66,7 @@ def retrieve_image_files(dir_path):
 def main():
     utils.set_news_urls()
     
-    model_name = "clip"
+    model_name = "longformer"
     
     if model_name == "longformer":
         article_embeddings_output_path = "/home/ataylor2/processing_covid_tweets/Thunder/article_embeddings"

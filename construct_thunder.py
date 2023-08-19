@@ -10,7 +10,7 @@ import utils
 import generate_community_embeddings
 
 pb_device = "cuda:1"
-pc_device = "cuda:3"
+pc_device = "cuda:5"
 lf_device = "cuda:6"
 
 def build_community_embeddings_for_window(window_name, window, window_images, comm_embeddings_path):
@@ -44,8 +44,9 @@ def build_community_embeddings_for_window(window_name, window, window_images, co
     
     embeddings_types = {
         #"primera_bert": {},
-        "primera_clip": {}
+        # "primera_clip": {}
         #"longformer": {}
+        "primera_clip_imageless": {}
     }
     for community in tqdm(aggregated_content_for_communities):
         if community == "":
@@ -60,13 +61,16 @@ def build_community_embeddings_for_window(window_name, window, window_images, co
         agg_community_content, agg_community_sources = zip(*unified_content)
         
         # pb_output = generate_community_embeddings.get_primera_bert_embedding(*pb_initialization, pb_device, agg_community_content)
-        pc_output = generate_community_embeddings.get_primera_clip_embedding(*pc_initialization, pc_device, agg_community_content, agg_community_sources)
+        # pc_output = generate_community_embeddings.get_primera_clip_embedding(*pc_initialization, pc_device, agg_community_content, agg_community_sources)
         # lf_output = generate_community_embeddings.get_longformer_embedding(*lf_initialization, lf_device, agg_community_content)
+        pc_imless_output = generate_community_embeddings.get_primera_clip_imageless_embedding(*pc_initialization, pc_device, agg_community_content, agg_community_sources)
+
         
         # embeddings_types["primera_bert"][community] = pb_output
-        embeddings_types["primera_clip"][community] = pc_output
+        # embeddings_types["primera_clip"][community] = pc_output
         # embeddings_types["longformer"][community] = lf_output
-        
+        embeddings_types["primera_clip_imageless"][community] = pc_imless_output
+
     
     for embeddings_type in embeddings_types:
         utils.dump_dill(embeddings_types[embeddings_type],os.path.join(comm_embeddings_path, window_name + "_" + embeddings_type))
@@ -93,7 +97,7 @@ def main():
     data_window_images_path = "/home/ataylor2/processing_covid_tweets/Thunder/metadata/data_windows_images.json"
     comm_embeddings_path = "/home/ataylor2/processing_covid_tweets/Thunder/community_embeddings"
     
-    completed_windows = utils.window_completion_check(comm_embeddings_path)
+    completed_windows =[]# utils.window_completion_check(comm_embeddings_path)
     
     article_files = retrieve_article_files(articles_path)
     if not os.path.exists(data_window_path):

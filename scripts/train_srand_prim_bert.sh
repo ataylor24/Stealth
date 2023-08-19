@@ -1,0 +1,1 @@
+python ../train.py ../configs/srd_prim_bert_config.json

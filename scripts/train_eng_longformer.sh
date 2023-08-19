@@ -1,0 +1,1 @@
+python ../train.py ../configs/eng_longformer_config.json

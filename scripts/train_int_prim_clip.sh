@@ -1,0 +1,1 @@
+python ../train.py ../configs/int_prim_clip_config.json

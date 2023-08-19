@@ -1,0 +1,1 @@
+python ../train.py ../configs/srd_longformer_config.json

@@ -1,0 +1,1 @@
+python ../train.py ../configs/ip_longformer_config.json

@@ -1,0 +1,1 @@
+python ../train.py ../configs/eng_prim_bert_config.json

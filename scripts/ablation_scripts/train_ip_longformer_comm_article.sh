@@ -1,0 +1,1 @@
+python ../train.py ../ablation_configs/ip_longformer_config_comm_article.json

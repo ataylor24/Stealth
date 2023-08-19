@@ -90,16 +90,13 @@ class NegativeSampler(object):
 
         return edgelist, labels, list(sampled_nodes), article_to_comm_edge, article_from_news_source_edge, node_mapping
 
-def save_processed_data(cached_datapath, training_instances, num_comm_nodes, num_article_nodes, metadata, hetero_validation_insts, hetero_testing_insts):
+def save_processed_data(cached_datapath, training_instances, num_comm_nodes, num_article_nodes, metadata, hetero_validation_insts, hetero_testing_insts, positive_weight):
     with open(cached_datapath, "wb") as fp:
-        dill.dump([training_instances, num_comm_nodes, num_article_nodes, metadata, hetero_validation_insts, hetero_testing_insts], fp)
+        dill.dump([training_instances, num_comm_nodes, num_article_nodes, metadata, hetero_validation_insts, hetero_testing_insts, positive_weight], fp)
         
 def load_processed_data(cached_datapath):
-    training_instances, num_comm_nodes, num_article_nodes, metadata, hetero_validation_insts, hetero_testing_insts = dill.load(open(cached_datapath, 'rb'))
-    
-    return training_instances, num_comm_nodes, num_article_nodes, metadata, hetero_validation_insts, hetero_testing_insts
-
-    
+    return dill.load(open(cached_datapath, 'rb')) 
+  
 def convert_edgelist_to_tensor(edgelist, shape):
     mat = np.zeros(shape, int)
     for src, trg in edgelist:
@@ -117,7 +114,7 @@ def construct_data_instance(g_instances, g_instance, num_nodes, num_articles, co
     comm_path_to_user_path_mapping = g_instances[g_instance]['comm_path_to_user_path_mapping']
     user_level_pathway_with_neg = g_instances[g_instance]['user_level_pathway_with_neg']
     user_level_pathway_with_neg_labels = g_instances[g_instance]['user_level_pathway_with_neg_labels']
-    
+    weight_pos = (len(comm_to_comm_with_neg_labels) - sum(comm_to_comm_with_neg_labels))/sum(comm_to_comm_with_neg_labels)
     # TODO: temporary fix: logically correct
     article_to_comm_edge[0] = article_from_news_source_edge[0]
     article_idx = article_from_news_source_edge[0]
@@ -132,26 +129,27 @@ def construct_data_instance(g_instances, g_instance, num_nodes, num_articles, co
     comm_comm_pos_neg_edges = utils.execute_mapping(comm_comm_pos_neg_edges, community_idx_mapping)
     
     if len(comm_comm_pos_neg_edges) < 3:
-        return None 
+        return None, None
     
     # comm_comm_pos_neg_edges, labels, sampled_nodes, article_to_comm_edge, article_from_news_source_edge, community_idx_mapping = negative_sampler(list(comm_comm_pos_edges),article_to_comm_edge,article_from_news_source_edge, comm_mapping)
     
     if comm_comm_pos_neg_edges == None:
-        return None
-
+        return None, None
+    data_inst['key'] = g_instance
+    # data_inst['wp'] = torch.FloatTensor([weight_pos])
     data_inst['community'].node_id = torch.arange(len(community_idx_mapping))
     # TODO: temporary fix: logically correct
     data_inst['article'].node_id = torch.arange(1)
     try:
         data_inst['community'].x = utils.merge_tensor_dicts(community_idx_mapping, comm_feats)
     except KeyError:
-        return None
-    
+        return None, None
     
     try:
         data_inst['article'].x = article_feats[article_idx] 
-    except:
-        data_inst['article'].x = article_feats[list(article_feats.keys())[random.randint(0, len(article_feats))]]  
+    except KeyError:
+        return None, None
+    #     data_inst['article'].x = article_feats[list(article_feats.keys())[random.randint(0, len(article_feats))]]  
 
     comm_to_comm_edges = torch.tensor(comm_comm_pos_neg_edges).T 
 
@@ -159,8 +157,10 @@ def construct_data_instance(g_instances, g_instance, num_nodes, num_articles, co
     article_from_news_source_edges = torch.tensor([article_from_news_source_edge]).T
     data_inst['article', 'mentioned_by', 'community'].edge_index = article_to_comm_edges # [2, num_edges_article_ment_comm]
     data_inst['article', 'written_by', 'community'].edge_index = article_from_news_source_edges # [2, num_edges_article_auth_comm]
+    
     data_inst = T.ToUndirected()(data_inst)
     data_inst['community', 'interacts_with', 'community'].edge_index = comm_to_comm_edges # [2, num_edges_comm_comm]
+
     data_inst['community', 'interacts_with', 'community'].edge_label_index = torch.ones((comm_to_comm_edges.shape[1],1),dtype=torch.long)
     data_inst['community', 'interacts_with', 'community'].edge_labels = torch.tensor(comm_to_comm_with_neg_labels, dtype=torch.float)
     data_inst['community', 'interacts_with', 'community'].edge_labels_str = comm_to_comm_with_neg
@@ -168,16 +168,14 @@ def construct_data_instance(g_instances, g_instance, num_nodes, num_articles, co
     data_inst['community', 'interacts_with', 'community'].user_edge_labels_str = user_level_pathway_with_neg
     data_inst['community', 'interacts_with', 'community'].user_edge_labels = user_level_pathway_with_neg_labels
             
-    return data_inst
+    return data_inst, weight_pos
 
-def prepare_training_data(training_instances_path, evaluation_instances_path, training_community_features_path, evaluation_community_features_path, training_article_features_path, evaluation_article_features_path, subgraph_min_size, subgraph_max_size, cached_datapath, overwrite=False):
+def prepare_training_data(training_instances_path, evaluation_instances_path, training_community_features_path, evaluation_community_features_path, training_article_features_path, evaluation_article_features_path, subgraph_min_size, subgraph_max_size, cached_datapath, overwrite=False, demo_data_gen=False):
     
     if os.path.exists(cached_datapath) and not overwrite:
         return load_processed_data(cached_datapath)
-    
     training_g_instances = utils.load_dill(training_instances_path)
     testing_g_instances = utils.load_dill(evaluation_instances_path)
-    
     training_comm_feats = utils.load_dill(training_community_features_path)
     training_comm_mapping = utils.create_key_mapping(training_comm_feats)
     num_nodes = len(training_comm_feats)
@@ -193,14 +191,16 @@ def prepare_training_data(training_instances_path, evaluation_instances_path, tr
     metadata = None
     
     retr_metadata = True
-    
+    weight_pos_avg = []
     training_negative_sampler = NegativeSampler(num_nodes, subgraph_max_size, subgraph_min_size)
-
+   
     for i, g_instance in enumerate(tqdm(training_g_instances.keys())):
-        data_inst = construct_data_instance(training_g_instances, g_instance, num_nodes, num_articles, training_comm_feats, training_comm_mapping, training_article_feats, training_negative_sampler)
+        data_inst, weight_pos = construct_data_instance(training_g_instances, g_instance, num_nodes, num_articles, training_comm_feats, training_comm_mapping, training_article_feats, training_negative_sampler)
         
         if data_inst == None:
             continue
+       
+        weight_pos_avg.append(weight_pos)
         
         if retr_metadata:
             metadata = data_inst.metadata()
@@ -215,7 +215,7 @@ def prepare_training_data(training_instances_path, evaluation_instances_path, tr
     
     for j, g_instance in enumerate(tqdm(testing_g_instances.keys())):
         
-        data_inst = construct_data_instance(testing_g_instances, g_instance, num_nodes, num_articles, eval_comm_feats, eval_comm_mapping, eval_article_feats, eval_negative_sampler)
+        data_inst, _ = construct_data_instance(testing_g_instances, g_instance, num_nodes, num_articles, eval_comm_feats, eval_comm_mapping, eval_article_feats, eval_negative_sampler)
 
         if data_inst == None:
             continue
@@ -224,12 +224,18 @@ def prepare_training_data(training_instances_path, evaluation_instances_path, tr
     midpoint = len(evaluation_insts) // 2
     hetero_validation_insts = evaluation_insts[:midpoint]
     hetero_testing_insts = evaluation_insts[midpoint:]
+    
+    if demo_data_gen:
+        demo_insts = []
+        demo_insts.extend(hetero_training_insts)
+        demo_insts.extend(evaluation_insts)
+        return demo_insts
         
     print("training data:", len(hetero_training_insts), "validation data:", len(hetero_validation_insts), "testing data:", len(hetero_testing_insts),"instance:", i + j)
 
-    save_processed_data(cached_datapath, hetero_training_insts, num_nodes, num_articles, metadata, hetero_validation_insts, hetero_testing_insts)
+    save_processed_data(cached_datapath, hetero_training_insts, num_nodes, num_articles, metadata, hetero_validation_insts, hetero_testing_insts, sum(weight_pos_avg)/len(weight_pos_avg))
     
-    return hetero_training_insts, num_nodes, num_articles, metadata, hetero_validation_insts, hetero_testing_insts
+    return hetero_training_insts, num_nodes, num_articles, metadata, hetero_validation_insts, hetero_testing_insts, sum(weight_pos_avg)/len(weight_pos_avg)
 
 if __name__ == "__main__":
     
@@ -251,4 +257,4 @@ if __name__ == "__main__":
     training_article_features_path = os.path.join(config.article_features_datapath, config.training_article_features)
     evaluation_article_features_path = os.path.join(config.article_features_datapath, config.eval_article_features)
     
-    prepare_training_data(training_instances_path, evaluation_instances_path, training_community_features_path, evaluation_community_features_path, training_article_features_path, evaluation_article_features_path, config.subgraph_min_size, config.subgraph_max_size, cached_datapath, overwrite=True)
+    prepare_training_data(training_instances_path, evaluation_instances_path, training_community_features_path, evaluation_community_features_path, training_article_features_path, evaluation_article_features_path, config.subgraph_min_size, config.subgraph_max_size, cached_datapath, overwrite=True, demo_data_gen=config.demo_data_generation)

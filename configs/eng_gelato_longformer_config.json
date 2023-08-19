@@ -1,0 +1,50 @@
+{
+    "demo_data_generation": true,
+    "auxiliary_model": "gelato",
+    "hyperparameters" : {
+        "gelato": {
+            "A": A,
+            "X": X,
+            "eta": 0.0,
+            "alpha": 0.0,
+            "beta": 1.0,
+            "add_self_loop": false,
+            "trained_edge_weight_batch_size": 20000,
+            "graph_learning_type": "mlp",
+            "graph_learning_params": {
+                "in_channels": 42,
+                "hidden_channels": 128,
+                "out_channels": 2,
+                "num_layers": 3,
+                "dropout": 0.5,
+                "relu_first": true,
+                "batch_norm": true,
+                "permutation_invariant": true
+            },
+            "topological_heuristic_type": "ac",
+            "topological_heuristic_params": {
+                "scaling_parameter": 0.001
+            }
+        },
+        "lr": 0.001,
+        "epochs": 250
+    },
+    "community_embedding_model_name": "longformer",
+    "article_embedding_model_name": "longformer",
+    "community_aggregation_type": "engagement",
+    "best_model_output_path": "/home/ataylor2/processing_covid_tweets/Thunder/Best_Models",
+    "cached_datapath": "/home/ataylor2/processing_covid_tweets/Thunder/cached_data",
+    "info_pathway_instances_datapath": "/home/ataylor2/processing_covid_tweets/Thunder/Information_Pathways/Full_Engagement_Comm/",
+    "training_instances_filename": "window_1_instances.pkl",
+    "evaluation_instances_filename": "window_2_instances.pkl",
+    "comm_feats_datapath": "/home/ataylor2/processing_covid_tweets/Thunder/compiled_embeddings_TEMP",
+    "training_comm_features": "window_0_longformer",
+    "eval_comm_features": "window_1_longformer",
+    "article_features_datapath": "/home/ataylor2/processing_covid_tweets/Thunder/article_embeddings",
+    "training_article_features": "window_1_article_embeddings.pkl",
+    "eval_article_features": "window_2_article_embeddings.pkl",
+    "subgraph_max_size": 25,
+    "subgraph_min_size": 4,
+    "embedding_dim": 768,
+    "cuda_device": 2
+}

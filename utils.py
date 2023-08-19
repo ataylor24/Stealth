@@ -4,6 +4,14 @@ import dill
 import torch
 import random 
 
+def compute_results_stats(results_list):
+    mean = sum(results_list) / len(results_list)
+    res = sum((i - mean) ** 2 for i in results_list) / len(results_list)
+    return mean, res
+
+def load_model(model_path):
+    return torch.load(model_path)
+
 def multi_list_shuffle(num_indices, lists_to_shuffle):
     shuffled_indices = random.shuffle(list(range(num_indices)))
     shuffled_lists = []
@@ -166,6 +174,20 @@ def set_news_urls():
     source_names = news_prefix_urls_rev
     global news_prefix_urls
     news_prefix_urls = {v: k for k, v in news_prefix_urls_rev.items()}
+    
+def merge_dicts_add(super_dict, sub_dict):
+    for key, value in sub_dict.items():
+        if key in super_dict and isinstance(super_dict[key], dict) and isinstance(value, dict):
+            merge_dicts_add(super_dict[key], value)
+        else:
+            if key in super_dict:
+                if isinstance(super_dict[key], (int, float)) and isinstance(value, (int, float)):
+                    super_dict[key] += value
+                elif isinstance(super_dict[key], list) and isinstance(value, list):
+                    super_dict[key].extend(value)
+            else:
+                super_dict[key] = value
+    return super_dict
     
 def merge_tensor_dicts(index_dict, content_dict, offset=0):
     # Get the number of rows in the final tensor

@@ -16,7 +16,7 @@ def construct_and_map_information_pathways(tweet_list_file_path, community_assig
     tweet_tree_list = utils.load_dill(tweet_list_file_path)
     information_pathways = {}
     for tweet_tree in tqdm(tweet_tree_list):
-        information_pathway= {
+        information_pathway = {
             'tweet_ids': {}, 
             'user_to_user': set(),
             'comm_to_comm': set(),
@@ -31,12 +31,9 @@ def construct_and_map_information_pathways(tweet_list_file_path, community_assig
         
         user_neighborhood_dict = {}
         source_set = set()
-        for (src_user, trg_user), tweet_id in tweet_tree_list[tweet_tree]['tweet_ids'].items():
-            try:
-                trg_comm = community_assignments_by_user[trg_user]
-                information_pathway['tweet_ids'][(community_assignments_by_user[src_user],trg_comm)] = tweet_id
-            except KeyError:
-                pass
+        skip_tweet = False
+        
+        information_pathway['tweet_ids'] = tweet_tree_list[tweet_tree]['tweet_ids']
         
         if debug:
             test_user_edges = []
@@ -46,17 +43,18 @@ def construct_and_map_information_pathways(tweet_list_file_path, community_assig
             try:
                 source_comm = community_assignments_by_user[src_user]
                 target_comm = community_assignments_by_user[trg_user]
-                information_pathway['comm_to_comm'].add((source_comm, target_comm))
+                
                 information_pathway['user_to_user'].add((src_user, trg_user))
                 source_set.add(src_user)
                 source_set.add(trg_user)
+                information_pathway['comm_to_comm'].add((source_comm, target_comm))
                 if debug:
                     test_user_edges.append((src_user, trg_user))
                     
                 target_comm = community_assignments_by_user[trg_user]
                 user_neighborhood_dict[src_user] = {}
                 
-                if not trg_comm in user_neighborhood_dict[src_user]:
+                if not target_comm in user_neighborhood_dict[src_user]:
                     user_neighborhood_dict[src_user][target_comm] = set()
                 user_neighborhood_dict[src_user][target_comm].add(trg_user)
                 
@@ -69,8 +67,9 @@ def construct_and_map_information_pathways(tweet_list_file_path, community_assig
                         test_mapped_user_edges[(source_comm, target_comm)] = []
                     test_mapped_user_edges[(source_comm, target_comm)].append((src_user, trg_user))
             except KeyError:
-                pass
-            
+                skip_tweet = True
+        if skip_tweet: continue
+       
         if len(information_pathway['comm_to_comm']) < 3:
             continue
         
@@ -225,10 +224,10 @@ def main():
     
     utils.set_news_urls()
     
-    tweet_tree_path = "/home/ataylor2/processing_covid_tweets/Thunder/sampled_tweet_trees"
+    tweet_tree_path = "/home/ataylor2/processing_covid_tweets/Thunder/full_tweet_trees"
     
     #eng, int, ips
-    community_types = ["eng", "int", "ips"]
+    community_types = ["srd","trd"]#["eng", "int", "ips"]
     
     tree_files = retrieve_tree_files(tweet_tree_path)
     community_type_information_pathways = {}
@@ -244,8 +243,14 @@ def main():
                 comm_fp = "/home/ataylor2/processing_covid_tweets/Thunder/community_assignments/interaction_comms.json"
             elif community_type == "ips":
                 # Influence and Passivity
-                comm_fp = "/home/ataylor2/processing_covid_tweets/Thunder/community_assignments/inf_pass_comms.json"            
-            
+                comm_fp = "/home/ataylor2/processing_covid_tweets/Thunder/community_assignments/inf_pass_comms.json" 
+            elif community_type == "srd":
+                # Semi Random Communities
+                comm_fp = "/home/ataylor2/processing_covid_tweets/Thunder/community_assignments/semi_random_comms.json"            
+            elif community_type == "trd":
+                # True Random Communities
+                comm_fp = "/home/ataylor2/processing_covid_tweets/Thunder/community_assignments/true_random_comms.json"
+            print(community_type)
             community_type_information_pathways[window_name][community_type] = construct_and_map_information_pathways(window_file, utils.load_json(comm_fp))
     
     filtered_community_type_information_pathways = {}
@@ -266,13 +271,20 @@ def main():
         for window_name in filtered_community_type_information_pathways[community_type]:
             if community_type == "eng":
                 # Engagement
-                comm_output_dir = "/home/ataylor2/processing_covid_tweets/Thunder/Information_Pathways/Engagement_Comm"
+                comm_output_dir = "/home/ataylor2/processing_covid_tweets/Thunder/Information_Pathways/top90_Engagement_Comm"
             elif community_type == "int":
                 # Interaction
-                comm_output_dir = "/home/ataylor2/processing_covid_tweets/Thunder/Information_Pathways/Interaction_Comm"
+                comm_output_dir = "/home/ataylor2/processing_covid_tweets/Thunder/Information_Pathways/top90_Interaction_Comm"
             elif community_type == "ips":
                 # Influence and Passivity
-                comm_output_dir = "/home/ataylor2/processing_covid_tweets/Thunder/Information_Pathways/IP_Comm"
+                comm_output_dir = "/home/ataylor2/processing_covid_tweets/Thunder/Information_Pathways/top90_IP_Comm"
+            elif community_type == "srd":
+                # Semi Random Communities
+                comm_output_dir = "/home/ataylor2/processing_covid_tweets/Thunder/Information_Pathways/top90_Semi_Random_Comm"            
+            elif community_type == "trd":
+                # True Random Communities
+                comm_output_dir = "/home/ataylor2/processing_covid_tweets/Thunder/Information_Pathways/top90_True_Random_Comm"
+
             with open(os.path.join(comm_output_dir, f"{window_name}_instances.pkl"), "wb") as fp:
                 dill.dump(filtered_community_type_information_pathways[community_type][window_name], fp)
             

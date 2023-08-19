@@ -206,5 +206,4 @@ class Model(torch.nn.Module):
             x_dict["community"],
             data["community", "interacts_with", "community"].edge_label_index,
         )
-        del x_dict, edge_index_dict, data
         return pred
